@@ -1,74 +1,65 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
+import React, { useContext, useEffect, useRef } from 'react';
+import { FlatList } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { router } from 'expo-router';
+import { ArticleContext } from '@/shared/Context';
+import NoItems from '@/components/NoItems';
+import ArticleItem from '@/components/ArticleItem';
 import { ThemedView } from '@/components/ThemedView';
+import FloatingButton from '@/components/ui/FloatingButton';
+import useGlobalStyles from '@/hooks/useGlobalStyles';
+import { ArticleType } from '@/shared/Types';
+import { useTheme } from '@react-navigation/native';
 
-export default function HomeScreen() {
+const ArticleList = () => {
+  const articles = useContext(ArticleContext);
+  const prevArticleLen = useRef(articles?.length);
+  const styles = useGlobalStyles();
+  const { colors } = useTheme();
+
+  useEffect(() => {
+    if (prevArticleLen.current < articles?.length) {
+      // an article got added so we redirect to the Edit Page
+      const newArticle = articles.sort(
+        (a: ArticleType, b: ArticleType) => b.created - a.created,
+      )[0];
+      // check if the new article was added within the last second
+      // to avoid redirect on app start when the articles get loaded initially
+      if (Date.now() - newArticle.created < 1000) {
+        router.replace('/(tabs)', { relativeToDirectory: true });
+      }
+    }
+    prevArticleLen.current = articles?.length;
+  }, [articles]);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ThemedView style={styles.listContainer}>
+      {!articles || articles?.length === 0 ? (
+        <NoItems items={articles} />
+      ) : (
+        <FlatList
+          keyExtractor={item => `item-${item.id}`}
+          data={articles}
+          renderItem={({ item, index }) => {
+            return (
+              <ArticleItem
+                article={item}
+                key={item.id}
+                last={index === articles.length - 1}
+              />
+            );
+          }}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      )}
+      <FloatingButton action={() => router.navigate('/add_article')}>
+        <MaterialCommunityIcons
+          size={28}
+          name="plus"
+          color={colors.background}
+        />
+      </FloatingButton>
+    </ThemedView>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+export default ArticleList;
